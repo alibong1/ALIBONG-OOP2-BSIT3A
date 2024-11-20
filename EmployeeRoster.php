@@ -6,7 +6,7 @@ require_once 'HourlyEmployee.php';
 require_once 'PieceWorker.php';
 
 class EmployeeRoster {
-    private array $roster;
+    private array $roster = [];
     private int $size;
 
     public function __construct(int $size) {
@@ -14,113 +14,130 @@ class EmployeeRoster {
         $this->roster = [];
     }
 
-    public function add(Employee $employee) {
-        if (count($this->roster) < $this->size) {
+    public function add(Employee $employee): void {
+        $emptyIndex = array_search(null, $this->roster, true);
+    
+        if ($emptyIndex !== false) {
+            $this->roster[$emptyIndex] = $employee;
+            echo "-------------------------------------------------\n";
+            echo "Employee added successfully in the first available spot (Index #$emptyIndex)!\n";
+        } elseif (count($this->roster) < $this->size) {
             $this->roster[] = $employee;
+            echo "-------------------------------------------------\n";
             echo "Employee added successfully!\n";
         } else {
-            echo "Roster is already full!\n";
+            echo "Roster is full. Unable to add more employees.\n";
         }
-    }
-
-    public function remove(int $index) {
-        if (isset($this->roster[$index])) {
-            unset($this->roster[$index]);
-
-        } else {
-            echo "Invalid employee index.\n";
-        }
-    }
-
-    public function exists(int $index): bool {
-         return isset($this->roster[$index]);
     }
     
 
-    public function availableSpace() {
-        return $this->size - count($this->roster);
+    public function remove(int $index): void {
+        if (isset($this->roster[$index])) {
+            $this->roster[$index] = null; 
+            echo "Employee removed successfully! Spot is now available.\n";
+        } else {
+            echo "Invalid employee index. Cannot remove.\n";
+        }
+    }
+    
+
+    public function exists(int $index): bool {
+        return isset($this->roster[$index]);
     }
 
-    public function display() {
+    public function availableSpace(): int {
+        $occupied = count(array_filter($this->roster, fn($e) => $e !== null)); 
+        return $this->size - $occupied; 
+    }
+    
+
+    // Display the all employees in the roster 
+    public function display(): void {
         if (empty($this->roster)) {
             echo "No employees in the roster.\n";
         } else {
             foreach ($this->roster as $index => $employee) {
-                echo "[" . ($index + 1) . "] " . $employee->getDetails() . "\n";
+                if ($employee !== null) {  // Only display employees that are not null
+                    echo "[" . "Employee #" . ($index + 1) . "] " . $employee->getDetails() . "\n";
+                }
             }
         }
     }
 
-    public function displayCE() {
+    // Count the total number of employees in the delete menu & ce summary
+    public function count(): void {
+        $count = count(array_filter($this->roster, fn($e) => $e !== null)); 
+        echo "-------------------------------------------------\n";
+        echo "Total employees: " . $count . "\n";
+        echo "-------------------------------------------------\n";
+    }
+
+    // Display employees by type
+    public function displayByType(string $type, string $emptyMessage): void {
+        $employees = array_filter($this->roster, fn($e) => $e instanceof $type);
+
+        if (empty($employees)) {
+            echo $emptyMessage . "\n";
+        } else {
+            foreach ($employees as $index => $employee) {
+                echo "[" ."Employee #". ($index + 1) . "] " . $employee->getDetails() . "\n";
+            }
+        }
+    }
+
+    // Display all Commission Employees
+    public function displayCE(): void {
         $this->displayByType(CommissionEmployee::class, "No Commission Employees in the roster.");
     }
 
-    public function displayHE() {
+    // Display all Hourly Employees
+    public function displayHE(): void {
         $this->displayByType(HourlyEmployee::class, "No Hourly Employees in the roster.");
     }
 
-    public function displayPE() {
+    // Display all Piece Workers
+    public function displayPE(): void {
         $this->displayByType(PieceWorker::class, "No Piece Workers in the roster.");
     }
 
-    private function displayByType(string $type, string $emptyMessage) {
-        $found = false;
-        foreach ($this->roster as $index => $employee) {
-            if ($employee instanceof $type) {
-                echo "[" . ($index + 1) . "] " . $this->$employee->getDetails() . "\n";
-                $found = true;
-            }
-        }
-        if (!$found) {
-            echo $emptyMessage . "\n";
-        }
+    // Count employees by type
+    public function countByType(string $type, string $emptyMessage): void {
+        $count = count(array_filter($this->roster, fn($e) => $e instanceof $type));
+        echo $count === 0 ? $emptyMessage . "\n" : "Total " . basename(str_replace('\\', '/', $type)) . ": " . $count . "\n";
+
     }
 
-    public function count() {
-        $count = count($this->roster);
-        if ($count === 0) {
-            echo "No employees in the roster.\n";
-        } else {
-            echo "Total employees: " . $count . "\n";
-        }
-        return $count;
+    // Count Commission Employees
+    public function countCE(): void {
+         $this->countByType(CommissionEmployee::class, "No Commission Employees in the roster.");
     }
-    
-    public function countCE() {
-        $this->countByType(CommissionEmployee::class, "No Commission Employees in the roster.");
-    }
-    
-    public function countHE() {
+
+    // Count Hourly Employees
+    public function countHE(): void {
         $this->countByType(HourlyEmployee::class, "No Hourly Employees in the roster.");
     }
-    
-    public function countPE() {
-        $this->countByType(PieceWorker::class, "No Piece Workers in the roster.");
+
+    // Count Piece Workers
+    public function countPE(): void {
+         $this->countByType(PieceWorker::class, "No Piece Workers in the roster.");
     }
-    
-    private function countByType(string $type, string $emptyMessage) {
-        $count = count(array_filter($this->roster, fn($e) => $e instanceof $type));
-        if ($count === 0) {
-            echo $emptyMessage . "\n";
+
+    // Calculate payroll for all employees
+    public function payroll(): void {
+        if (empty($this->roster)) {
+            echo "No employees to calculate payroll.\n";
         } else {
-            echo "Total " . basename(str_replace('\\', '/', $type)) . ": " . $count . "\n";
+            echo "Payroll Summary:\n";
+            echo "-------------------------------------------------\n";
+    
+            foreach ($this->roster as $index => $employee) {
+                if ($employee !== null) { 
+                    echo "Employee #" . ($index + 1) . ": " . $employee->getDetails() . " - Pay: " . $employee->calculatePay() . "\n";
+                }
+            }
+    
+            echo "-------------------------------------------------\n";
         }
-        return $count;
     }
     
-
-    public function payroll() {
-        if(!empty($this->roster)){
-        foreach ($this->roster as $employee) {
-            echo $employee->getDetails() . " - Pay: " . $employee->calculatePay() . "\n";
-        }
-    }
-        else{
-            echo "\nNo employee to calculate payroll\n";
-        }
-        
-        
-    }
 }
-
-?>
