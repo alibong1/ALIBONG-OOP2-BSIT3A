@@ -1,7 +1,5 @@
 <?php
 
-use function PHPSTORM_META\exitPoint;
-
 require_once 'EmployeeRoster.php';
 
 class InvalidOptionException extends Exception {}
@@ -42,64 +40,109 @@ class Main {
             $this->clear();
             $this->menu();
             $choice = readline("Select option: ");
-            
-            try {
-                switch ((int)$choice) {
-                    case 1:
-                        $this->addMenu();
-                        break;
-                    case 2:
-                        $this->deleteMenu();
-                        break;
-                    case 3:
-                        $this->otherMenu();
-                        break;
-                    case 0:
-                        $this->repeat = false;
-                        echo "System Exit...\n";
-                        exit;
-                        break;
-                    default:
-                        throw new InvalidOptionException("Invalid input. Please try again.");
+    
+            // Check if the input is numeric and valid
+            if (is_numeric($choice)) {
+                try {
+                    switch ((int)$choice) {
+                        case 1:
+                            $this->addMenu();
+                            break;
+                        case 2:
+                            $this->deleteMenu();
+                            break;
+                        case 3:
+                            $this->otherMenu();
+                            break;
+                        case 0:
+                            $this->repeat = false;
+                            echo "System Exit...\n";
+                            exit;
+                            break;
+                        default:
+                            throw new InvalidOptionException("Invalid input. Please try again.");
+                    }
+                } catch (InvalidOptionException $e) {
+                    echo $e->getMessage() . "\n";
+                    readline("Press \"Enter\" key to continue...");
                 }
-            } catch (InvalidOptionException $e) {
-                echo $e->getMessage() . "\n";
+            } else {
+                echo "Invalid input. Please enter a number from the menu options.\n";
                 readline("Press \"Enter\" key to continue...");
             }
         }
-        echo "System Exit...\n";
-        exit;
     }
+    
+    
 
     private function menu() {
-        $this->clear();
-        echo "Available Space: " . $this->roster->availableSpace() . "\n";
-        echo "*** EMPLOYEE ROSTER MENU ***\n";
+        $this->clear(); 
+    
+        echo "Please enter the size of the roster: " . $this->size . "\n"; 
+        echo "Available Space: " . $this->roster->availableSpace() . "\n"; 
+        echo "*****************************************\n";
+        echo "***        EMPLOYEE ROSTER MENU       ***\n";
+        echo "*****************************************\n";
         echo "[1] Add Employee\n";
         echo "[2] Delete Employee\n";
         echo "[3] Other Menu\n";
         echo "[0] Exit\n";
-    }
+        echo "*****************************************\n";
+    
 
+    }
+    
+    
     private function addMenu() {
         $this->clear();
-
+    
+        if ($this->roster->availableSpace() <= 0) {
+            echo "The roster is full. You cannot add more employees.\n";
+    
+            $choice = strtolower(readline("Press \"Enter\" key to continue...: "));
+            if ($choice === 'y') {
+                $this->entrance(); 
+            } else {
+                echo "Returning to the main menu...\n";
+                $this->entrance(); 
+            }
+            return; 
+        }
+        echo "-----------------------\n";
         echo "--- Employee Detail ---\n";
+        echo "-----------------------\n";
         $name = readline("Enter name: ");
         $address = readline("Enter address: ");
         $age = (int)readline("Enter age: ");
         $companyName = readline("Enter company name: ");
-        if(!(ctype_alpha(str_replace(' ', '', $name))) || !is_numeric($age)){
-            echo $age < 18 ? "\nAge must be 18 and above." : "\nInvalid input detected!";
+    
+        // Validate name 
+        if (!preg_match("/^[a-zA-Z\s]+$/", $name)) {
+            echo "\nName can only contain letters.\n";
             readline("Press \"Enter\" key to continue...");
-            $this->entrance();
+            $this->addMenu(); 
+            return; 
         }
-
-        $this->empType($name, $address, $age, $companyName);
+    
+        // Validate age 
+        if (!is_numeric($age) || $age < 18) {
+            echo "\nAge must be 18  above.\n";
+            echo "Age must be a number.\n";
+            readline("Press \"Enter\" key to continue...");
+            $this->addMenu(); 
+            return; 
+        }
+    
+        $this->empType($name, $address, $age, $companyName); 
     }
-
+    
+    
+    
+    
     private function empType($name, $address, $age, $companyName) {
+        echo "---------------------\n";
         echo "--- Employee Type ---\n";
+        echo "---------------------\n";
         echo "[1] Commission Employee\n";
         echo "[2] Hourly Employee\n";
         echo "[3] Piece Worker\n";
@@ -126,16 +169,10 @@ class Main {
         }
     }
 
-    private function addOnsCE($name, $address, $age, $companyName) {
-        if ($age < 18) {
-            echo "\nAge must be 18 and above.\n";
-            readline("Press \"Enter\" key to continue...");
-            $this->entrance();
-        }
-    
+    private function addOnsCE($name, $address, $age, $companyName) {    
         $regularSalary = (float)readline("Enter regular salary: ");
         $itemSold = (int)readline("Enter items sold: ");
-        $commissionRate = (float)readline("Enter commission rate: ");
+        $commissionRate = (float)readline("Enter commission rate (decimal): ");
     
         
         if (!$this->validateNotBlank($name) || !$this->validateNotBlank($address) || 
@@ -199,42 +236,64 @@ class Main {
 
     private function deleteMenu() {
         $this->clear();
-        echo "*** List of Employees on the current Roster ***\n";
-        $this->roster->display();
+        echo "***************************************************\n";
+        echo "***   List of Employees on the Current Roster   ***\n";
+        echo "***************************************************\n";
     
-        try {
-            $employeeNumber = (int)readline("\nEnter the employee number to delete (or 0 to return): ");
+        $this->roster->display(); 
+
+        if ($this->roster->count() === 0) {
+            echo "No employees in the roster.\n";
+            readline("Press \"Enter\" key to return to the main menu...");
+            $this->entrance();
+            return;
+        }
     
-            if ($employeeNumber !== 0) {
-                if (!$this->roster->exists($employeeNumber - 1)) {
-                    throw new Exception("Error: Employee does not exist.");
-                }
+        $rosterSize = $this->size; 
+        $employeeNumber = (int)readline("\nEnter the employee number to delete (or any key to return): ");
     
-                $this->roster->remove($employeeNumber - 1);
-                
+        if ($employeeNumber === 0) {
+            $this->entrance();
+            return;
+        }
     
-                if ($this->roster->count() === 0) {
-                    echo "No more employees left.\n";
-                    readline("Press \"Enter\" key to return to the main menu.");
-                    $this->entrance();
-                    return;
-                }
-    
-                $confirm = strtolower(readline("Press \"y\" key to continue removing or any other key to return to the main menu: "));
-                if ($confirm === 'y') {
-                    $this->deleteMenu(); 
-                } else {
-                    $this->entrance(); 
-                }
-            } else {
-                $this->entrance(); 
-            }
-        } catch (Exception $e) {
-            echo $e->getMessage() . "\n";
+        // Validate input
+        if ($employeeNumber < 1 || $employeeNumber > $rosterSize) {
+            echo "Error: Invalid input. Employee number must be between 1 and $rosterSize.\n";
             readline("Press \"Enter\" key to continue...");
             $this->deleteMenu();
+            return;
+        }
+    
+        // Check if the slot is already empty
+        if (!$this->roster->exists($employeeNumber - 1)) {
+            echo "Error: Slot #$employeeNumber is already empty.\n";
+            readline("Press \"Enter\" key to continue...");
+            $this->deleteMenu();
+            return;
+        }
+    
+        // Confirm and delete the employee
+        $confirmDelete = strtolower(readline("Are you sure you want to delete Employee #$employeeNumber? (y/n): "));
+        if ($confirmDelete === 'y') {
+            $this->roster->remove($employeeNumber - 1); 
+            echo "Employee #$employeeNumber has been removed.\n";
+        } else {
+            echo "Operation canceled. No employee was deleted.\n";
+        }
+    
+        // Update and show the available slots
+        echo "Available space on the roster: " . $this->roster->availableSpace() . "\n";
+    
+        // Ask if the user wants to continue deleting
+        $continue = strtolower(readline("Press \"y\" to continue removing or any other key to return to the main menu: "));
+        if ($continue === 'y') {
+            $this->deleteMenu(); 
+        } else {
+            $this->entrance(); 
         }
     }
+    
     
 
     private function otherMenu() {
@@ -350,7 +409,6 @@ class Main {
     }
 
     private function repeat() {
-        echo "Employee Added!\n";
         if ($this->roster->count() < $this->size) {
             $c = readline("Add more? (y to continue or n to return): ");
             if (strtolower($c) == 'y') {
@@ -371,7 +429,5 @@ class Main {
     }
 }
 
-$entry = new Main();
-$entry->start();
 
 ?>
